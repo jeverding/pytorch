@@ -84,7 +84,7 @@ TORCH_API void deleteNode(Node* function);
 /// are created in one thread and `C` is created in a new thread, there are *no
 /// guarantees* w.r.t. the ordering of `C` relative to `A` or `B`.
 ///~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-struct TORCH_API Node : std::enable_shared_from_this<Node> {
+struct TORCH_API Node : public std::enable_shared_from_this<Node> {
  public:
   /// Construct a new `Node` with the given `next_edges`. `sequence_nr` is
   /// a (currently THE) hint to prioritization in the backward() pass, with
@@ -187,6 +187,10 @@ struct TORCH_API Node : std::enable_shared_from_this<Node> {
   // Outputs ("Next Edges")
 
   const Edge& next_edge(size_t index) const noexcept {
+    return next_edges_[index];
+  }
+
+  Edge& next_edge(size_t index) noexcept {
     return next_edges_[index];
   }
 
@@ -331,6 +335,9 @@ struct TORCH_API Node : std::enable_shared_from_this<Node> {
   virtual bool passes_state_transparently() {
     return false;
   }
+
+  // Move/copy all fields from 'rhs'.
+  void move_from(Node& rhs);
 
   static uint64_t peek_at_next_sequence_nr();
 
