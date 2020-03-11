@@ -23,7 +23,6 @@ AccumulateGrad::AccumulateGrad(Variable variable_)
 }
 
 auto AccumulateGrad::apply(variable_list&& grads) -> variable_list {
-  // XXX: this method is not thread-safe!
   check_input_variables("AccumulateGrad", grads, 1, 0);
 
   if (!grads[0].defined())
@@ -33,6 +32,11 @@ auto AccumulateGrad::apply(variable_list&& grads) -> variable_list {
         "leaf variable has been moved into the graph interior");
   if (!variable.requires_grad())
     return {};
+
+  // Acquire lock to here protect thread safety on variable, this ensures hooks
+  // on variable and AccumulateGrad itself does not race to shared variables from
+  // different threads. see Note [Thread Safety on Autograd Node]
+  std::lock_guard<std::mutex> lock(mutex_);
 
   at::Tensor& grad = variable.grad();
   // If the function has post hooks (for example, a DDP allreduce hook),
